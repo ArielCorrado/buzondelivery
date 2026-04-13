@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./buzon8.css";
 
 const baseImages = [
@@ -38,54 +38,151 @@ const features = [
 
 const gallery = Array.from({ length: 10 }, (_, index) => baseImages[index % baseImages.length]);
 
+function getSlidesPerView(width: number) {
+    if (width <= 780) return 1;
+    if (width <= 1100) return 2;
+    return 4;
+}
+
+function preloadImages(imageUrls: string[]) {
+    return Promise.all(
+        imageUrls.map(
+            (src) =>
+                new Promise<void>((resolve) => {
+                    const img = new Image();
+                    img.src = src;
+
+                    if (img.complete) {
+                        resolve();
+                        return;
+                    }
+
+                    img.onload = () => resolve();
+                    img.onerror = () => resolve();
+                })
+        )
+    );
+}
+
 export default function Buzon8() {
-    const [galleryIndex, setGalleryIndex] = useState(1);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-    const [galleryTransitionEnabled, setGalleryTransitionEnabled] = useState(true);
+    const [imagesReady, setImagesReady] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [slidesPerView, setSlidesPerView] = useState(() => {
+        if (typeof window === "undefined") return 4;
+        return getSlidesPerView(window.innerWidth);
+    });
+
+    const heroImage = useMemo(() => baseImages[0], []);
+    const clonesCount = slidesPerView;
+
+    const extendedGallery = useMemo(() => {
+        if (gallery.length === 0) return [];
+        const headClones = gallery.slice(-clonesCount);
+        const tailClones = gallery.slice(0, clonesCount);
+        return [...headClones, ...gallery, ...tailClones];
+    }, [clonesCount]);
+
+    const [galleryIndex, setGalleryIndex] = useState(clonesCount);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+    const autoplayRef = useRef<number | null>(null);
 
     useEffect(() => {
-        const interval = window.setInterval(() => {
-            setGalleryTransitionEnabled(true);
-            setGalleryIndex((prev) => prev + 1);
-        }, 3200);
+        let mounted = true;
 
-        return () => window.clearInterval(interval);
+        const uniqueImages = Array.from(new Set([...baseImages, ...gallery]));
+
+        preloadImages(uniqueImages).then(() => {
+            if (!mounted) return;
+            setImagesReady(true);
+            setGalleryIndex(clonesCount);
+        });
+
+        return () => {
+            mounted = false;
+        };
+    }, [clonesCount]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            const nextSlidesPerView = getSlidesPerView(window.innerWidth);
+            setSlidesPerView((prev) => (prev === nextSlidesPerView ? prev : nextSlidesPerView));
+
+            if (window.innerWidth > 780) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
+        window.addEventListener("resize", handleResize);
+        handleResize();
+
+        return () => window.removeEventListener("resize", handleResize);
     }, []);
 
     useEffect(() => {
+        if (!imagesReady) return;
+
+        setIsAnimating(false);
+        setGalleryIndex(clonesCount);
+
+        const id = window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                setIsAnimating(false);
+            });
+        });
+
+        return () => window.cancelAnimationFrame(id);
+    }, [clonesCount, imagesReady]);
+
+    const clearAutoplay = () => {
+        if (autoplayRef.current !== null) {
+            window.clearInterval(autoplayRef.current);
+            autoplayRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        clearAutoplay();
+
+        if (!imagesReady || !isAutoPlaying || isAnimating) return;
+
+        autoplayRef.current = window.setInterval(() => {
+            setGalleryIndex((prev) => prev + 1);
+            setIsAnimating(true);
+        }, 3200);
+
+        return () => clearAutoplay();
+    }, [imagesReady, isAutoPlaying, isAnimating]);
+
+    useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (lightboxIndex === null) return;
+            if (lightboxIndex !== null) {
+                if (event.key === "Escape") {
+                    setLightboxIndex(null);
+                }
 
-            if (event.key === "Escape") {
-                setLightboxIndex(null);
-            }
+                if (event.key === "ArrowRight") {
+                    setLightboxIndex((prev) => {
+                        if (prev === null) return null;
+                        return (prev + 1) % gallery.length;
+                    });
+                }
 
-            if (event.key === "ArrowRight") {
-                setLightboxIndex((prev) => {
-                    if (prev === null) return null;
-                    return (prev + 1) % gallery.length;
-                });
-            }
-
-            if (event.key === "ArrowLeft") {
-                setLightboxIndex((prev) => {
-                    if (prev === null) return null;
-                    return (prev - 1 + gallery.length) % gallery.length;
-                });
+                if (event.key === "ArrowLeft") {
+                    setLightboxIndex((prev) => {
+                        if (prev === null) return null;
+                        return (prev - 1 + gallery.length) % gallery.length;
+                    });
+                }
+            } else if (event.key === "Escape") {
+                setIsMobileMenuOpen(false);
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
-
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [lightboxIndex]);
-
-    const heroImage = useMemo(() => baseImages[0], []);
-
-    const extendedGallery = useMemo(() => {
-        if (gallery.length === 0) return [];
-        return [gallery[gallery.length - 1], ...gallery, gallery[0]];
-    }, []);
 
     const openLightbox = (index: number) => {
         setLightboxIndex(index);
@@ -110,49 +207,62 @@ export default function Buzon8() {
     };
 
     const nextGallery = () => {
-        setGalleryTransitionEnabled(true);
+        if (!imagesReady || isAnimating) return;
         setGalleryIndex((prev) => prev + 1);
+        setIsAnimating(true);
     };
 
     const prevGallery = () => {
-        setGalleryTransitionEnabled(true);
+        if (!imagesReady || isAnimating) return;
         setGalleryIndex((prev) => prev - 1);
+        setIsAnimating(true);
+    };
+
+    const goToGalleryIndex = (index: number) => {
+        if (!imagesReady || isAnimating) return;
+        setGalleryIndex(index + clonesCount);
+        setIsAnimating(true);
     };
 
     const handleGalleryTransitionEnd = () => {
-        if (galleryIndex === 0) {
-            setGalleryTransitionEnabled(false);
-            setGalleryIndex(gallery.length);
+        const firstRealIndex = clonesCount;
+        const lastRealIndex = gallery.length + clonesCount - 1;
+
+        if (galleryIndex > lastRealIndex) {
+            setIsAnimating(false);
+            setGalleryIndex(firstRealIndex);
             return;
         }
 
-        if (galleryIndex === gallery.length + 1) {
-            setGalleryTransitionEnabled(false);
-            setGalleryIndex(1);
+        if (galleryIndex < firstRealIndex) {
+            setIsAnimating(false);
+            setGalleryIndex(gallery.length + clonesCount - 1);
+            return;
         }
+
+        setIsAnimating(false);
     };
 
-    useEffect(() => {
-        if (!galleryTransitionEnabled) {
-            const id = window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => {
-                    setGalleryTransitionEnabled(true);
-                });
-            });
-
-            return () => window.cancelAnimationFrame(id);
-        }
-    }, [galleryTransitionEnabled]);
-
     const currentDotIndex =
-        galleryIndex === 0
-            ? gallery.length - 1
-            : galleryIndex === gallery.length + 1
-                ? 0
-                : galleryIndex - 1;
+        ((galleryIndex - clonesCount) % gallery.length + gallery.length) % gallery.length;
+
+    const trackWidthPercent = (extendedGallery.length / slidesPerView) * 100;
+    const translatePercent = (galleryIndex * 100) / extendedGallery.length;
+    const slideWidthPercent = 100 / extendedGallery.length;
+
+    const closeMobileMenu = () => {
+        setIsMobileMenuOpen(false);
+    };
 
     return (
         <div className="buzon6">
+            {!imagesReady && (
+                <div className="buzon6-initial-loader" aria-label="Cargando imágenes">
+                    <div className="buzon6-initial-loader-spinner" />
+                    <span>Cargando imágenes...</span>
+                </div>
+            )}
+
             <div className="buzon6-topbar">
                 <div className="buzon6-container buzon6-topbar-inner">
                     <span>Fabricación propia</span>
@@ -163,7 +273,7 @@ export default function Buzon8() {
 
             <header className="buzon6-header">
                 <div className="buzon6-container buzon6-header-inner">
-                    <a href="#inicio" className="buzon6-logo">
+                    <a href="#inicio" className="buzon6-logo" onClick={closeMobileMenu}>
                         <span className="buzon6-logo-mark" />
                         <span className="buzon6-logo-text">BUZON DELIVERY</span>
                     </a>
@@ -176,7 +286,46 @@ export default function Buzon8() {
                         <a href="#contacto">Contact</a>
                     </nav>
 
-                    <a href="#contacto" className="buzon6-header-link">
+                    <div className="buzon6-header-actions">
+                        <a href="#contacto" className="buzon6-header-link">
+                            Pedir presupuesto
+                        </a>
+
+                        <button
+                            type="button"
+                            className={`buzon6-mobile-toggle ${isMobileMenuOpen ? "is-open" : ""}`}
+                            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                            aria-label="Abrir menú"
+                            aria-expanded={isMobileMenuOpen}
+                        >
+                            <span />
+                            <span />
+                            <span />
+                        </button>
+                    </div>
+                </div>
+
+                <div className={`buzon6-mobile-menu ${isMobileMenuOpen ? "is-open" : ""}`}>
+                    <a href="#inicio" onClick={closeMobileMenu}>
+                        Home
+                    </a>
+                    <a href="#overview" onClick={closeMobileMenu}>
+                        Overview
+                    </a>
+                    <a href="#specs" onClick={closeMobileMenu}>
+                        Tech Specs
+                    </a>
+                    <a href="#gallery" onClick={closeMobileMenu}>
+                        Gallery
+                    </a>
+                    <a href="#contacto" onClick={closeMobileMenu}>
+                        Contact
+                    </a>
+                    <a
+                        href="#contacto"
+                        className="buzon6-mobile-menu-cta"
+                        onClick={closeMobileMenu}
+                    >
                         Pedir presupuesto
                     </a>
                 </div>
@@ -379,27 +528,35 @@ export default function Buzon8() {
                             </div>
                         </div>
 
-                        <div className="buzon6-gallery-slider">
+                        <div
+                            className="buzon6-gallery-slider"
+                            onMouseEnter={() => setIsAutoPlaying(false)}
+                            onMouseLeave={() => setIsAutoPlaying(true)}
+                            onTouchStart={() => setIsAutoPlaying(false)}
+                            onTouchEnd={() => setIsAutoPlaying(true)}
+                        >
                             <div
-                                className={`buzon6-gallery-track ${galleryTransitionEnabled ? "is-animated" : "is-static"}`}
+                                className={`buzon6-gallery-track ${isAnimating ? "is-animated" : "is-static"}`}
                                 style={{
-                                    transform: `translateX(-${galleryIndex * 25}%)`,
+                                    width: `${trackWidthPercent}%`,
+                                    transform: `translateX(-${translatePercent}%)`,
                                 }}
                                 onTransitionEnd={handleGalleryTransitionEnd}
                             >
                                 {extendedGallery.map((image, index) => {
                                     const realIndex =
-                                        index === 0
-                                            ? gallery.length - 1
-                                            : index === extendedGallery.length - 1
-                                                ? 0
-                                                : index - 1;
+                                        ((index - clonesCount) % gallery.length + gallery.length) %
+                                        gallery.length;
 
                                     return (
                                         <button
                                             key={`${image}-${index}`}
                                             type="button"
                                             className="buzon6-gallery-slide"
+                                            style={{
+                                                flex: `0 0 ${slideWidthPercent}%`,
+                                                minWidth: `${slideWidthPercent}%`,
+                                            }}
                                             onClick={() => openLightbox(realIndex)}
                                             aria-label={`Abrir imagen ${realIndex + 1}`}
                                         >
@@ -417,10 +574,7 @@ export default function Buzon8() {
                                     key={index}
                                     type="button"
                                     className={index === currentDotIndex ? "is-active" : ""}
-                                    onClick={() => {
-                                        setGalleryTransitionEnabled(true);
-                                        setGalleryIndex(index + 1);
-                                    }}
+                                    onClick={() => goToGalleryIndex(index)}
                                     aria-label={`Ir a imagen ${index + 1}`}
                                 />
                             ))}
@@ -466,7 +620,10 @@ export default function Buzon8() {
                                 </div>
                                 <input type="text" placeholder="Subject" />
                                 <textarea placeholder="Message" rows={6} />
-                                <button type="submit" className="buzon6-btn buzon6-btn-primary buzon6-form-submit">
+                                <button
+                                    type="submit"
+                                    className="buzon6-btn buzon6-btn-primary buzon6-form-submit"
+                                >
                                     Submit
                                 </button>
                             </form>
@@ -524,10 +681,7 @@ export default function Buzon8() {
                         ←
                     </button>
 
-                    <div
-                        className="buzon6-lightbox-content"
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                    <div className="buzon6-lightbox-content" onClick={(e) => e.stopPropagation()}>
                         <img
                             src={gallery[lightboxIndex]}
                             alt={`Imagen ampliada ${lightboxIndex + 1}`}

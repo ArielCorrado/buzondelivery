@@ -53,6 +53,41 @@ textarea {
     background: #ffffff;
 }
 
+.buzon6-initial-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.buzon6-initial-loader span {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--b6-text-soft);
+    letter-spacing: 0.03em;
+}
+
+.buzon6-initial-loader-spinner {
+    width: 54px;
+    height: 54px;
+    border-radius: 999px;
+    border: 4px solid rgba(244, 67, 91, 0.16);
+    border-top-color: var(--b6-red);
+    animation: buzon6Spin 0.9s linear infinite;
+}
+
+@keyframes buzon6Spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .buzon6-container {
     width: min(calc(100% - 32px), var(--b6-container));
     margin: 0 auto;
@@ -91,16 +126,24 @@ textarea {
     gap: 18px;
 }
 
+.buzon6-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
 .buzon6-logo {
     display: inline-flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
 }
 
 .buzon6-logo-mark {
     position: relative;
     width: 18px;
     height: 18px;
+    min-width: 18px;
     border-radius: 999px;
     border: 4px solid var(--b6-red);
 }
@@ -117,6 +160,7 @@ textarea {
     font-size: 1.06rem;
     font-weight: 900;
     letter-spacing: 0.02em;
+    line-height: 1;
 }
 
 .buzon6-nav {
@@ -142,6 +186,53 @@ textarea {
     color: var(--b6-red);
 }
 
+.buzon6-mobile-toggle {
+    display: none;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid var(--b6-border);
+    border-radius: 14px;
+    background: #ffffff;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.buzon6-mobile-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--b6-text);
+    border-radius: 999px;
+    transition:
+        transform 0.25s ease,
+        opacity 0.25s ease;
+}
+
+.buzon6-mobile-toggle.is-open span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.buzon6-mobile-toggle.is-open span:nth-child(2) {
+    opacity: 0;
+}
+
+.buzon6-mobile-toggle.is-open span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+.buzon6-mobile-menu {
+    display: none;
+}
+
+.buzon6-mobile-menu-cta {
+    color: var(--b6-red);
+}
+
 .buzon6-hero {
     background:
         linear-gradient(145deg, #f0f1f3 0%, #edeff2 55%, #e7eaee 55%, #f3f4f6 100%);
@@ -154,6 +245,11 @@ textarea {
     align-items: center;
     gap: 26px;
     padding: 40px 0 30px;
+}
+
+.buzon6-hero-copy {
+    position: relative;
+    z-index: 2;
 }
 
 .buzon6-kicker {
@@ -646,12 +742,11 @@ textarea {
 
 .buzon6-gallery-track {
     display: flex;
-    width: 100%;
     will-change: transform;
 }
 
 .buzon6-gallery-track.is-animated {
-    transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .buzon6-gallery-track.is-static {
@@ -660,8 +755,6 @@ textarea {
 
 .buzon6-gallery-slide {
     position: relative;
-    flex: 0 0 25%;
-    min-width: 25%;
     padding: 0 9px;
     overflow: hidden;
     background: transparent;
@@ -960,6 +1053,18 @@ textarea {
     letter-spacing: 0.04em;
 }
 
+@keyframes buzon6MobileMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 @media (max-width: 1100px) {
 
     .buzon6-hero-inner,
@@ -1003,11 +1108,6 @@ textarea {
     .buzon6-feature-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-
-    .buzon6-gallery-slide {
-        flex: 0 0 50%;
-        min-width: 50%;
-    }
 }
 
 @media (max-width: 780px) {
@@ -1021,14 +1121,83 @@ textarea {
 
     .buzon6-header-inner {
         min-height: 74px;
+        gap: 10px;
     }
 
-    .buzon6-nav {
+    .buzon6-nav,
+    .buzon6-header-link {
         display: none;
+    }
+
+    .buzon6-mobile-toggle {
+        display: inline-flex;
+    }
+
+    .buzon6-mobile-menu {
+        display: none;
+        background: #ffffff;
+        border-top: 1px solid transparent;
+    }
+
+    .buzon6-mobile-menu.is-open {
+        display: flex;
+        flex-direction: column;
+        border-top-color: var(--b6-border);
+        animation: buzon6MobileMenuIn 0.25s ease;
+    }
+
+    .buzon6-mobile-menu a {
+        display: block;
+        padding: 14px 20px;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--b6-border);
+        background: #ffffff;
+    }
+
+    .buzon6-hero-inner {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 28px 0 36px;
+    }
+
+    .buzon6-hero-copy {
+        order: 1;
+    }
+
+    .buzon6-hero-visual {
+        order: 2;
+        min-height: auto;
+        padding-top: 4px;
     }
 
     .buzon6-hero-bg-word {
         font-size: clamp(3.5rem, 18vw, 7rem);
+        top: 44%;
+    }
+
+    .buzon6-hero-title {
+        font-size: clamp(2.8rem, 15vw, 4.6rem);
+        line-height: 0.92;
+    }
+
+    .buzon6-hero-text {
+        margin-top: 18px;
+        line-height: 1.75;
+    }
+
+    .buzon6-hero-image-wrap {
+        width: 100%;
+        max-width: 100%;
+        min-height: 260px;
+    }
+
+    .buzon6-hero-image {
+        width: 100%;
+        max-width: 100%;
+        max-height: 340px;
+        object-fit: contain;
     }
 
     .buzon6-hero-meta,
@@ -1048,35 +1217,59 @@ textarea {
 
     .buzon6-tech-stage {
         min-height: auto;
-        padding-bottom: 300px;
+        padding-bottom: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .buzon6-tech-product {
+        max-height: 300px;
     }
 
     .buzon6-tech-point {
+        position: relative;
         width: 100%;
         max-width: 100%;
-        left: 0;
-        right: 0;
-        text-align: left;
-    }
-
-    .buzon6-tech-line,
-    .buzon6-tech-dot {
-        display: none;
-    }
-
-    .buzon6-tech-point-left-top {
-        top: auto;
-        bottom: 210px;
-    }
-
-    .buzon6-tech-point-right-top {
-        top: auto;
-        bottom: 120px;
+        left: auto;
         right: auto;
+        top: auto;
+        bottom: auto;
+        text-align: left;
+        padding-left: 34px;
     }
 
-    .buzon6-tech-point-right-bottom {
-        bottom: 30px;
+    .buzon6-tech-line {
+        display: block;
+        position: absolute;
+        left: 0;
+        top: 11px;
+        width: 18px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.45);
+    }
+
+    .buzon6-tech-dot {
+        display: block;
+        position: absolute;
+        left: 18px;
+        top: 6px;
+        width: 12px;
+        height: 12px;
+    }
+
+    .buzon6-tech-point-left-top .buzon6-tech-line,
+    .buzon6-tech-point-right-top .buzon6-tech-line,
+    .buzon6-tech-point-right-bottom .buzon6-tech-line {
+        left: 0;
+        right: auto;
+        width: 18px;
+    }
+
+    .buzon6-tech-point-left-top .buzon6-tech-dot,
+    .buzon6-tech-point-right-top .buzon6-tech-dot,
+    .buzon6-tech-point-right-bottom .buzon6-tech-dot {
+        left: 18px;
         right: auto;
     }
 
@@ -1096,9 +1289,11 @@ textarea {
     }
 
     .buzon6-gallery-slide {
-        flex: 0 0 100%;
-        min-width: 100%;
         padding: 0;
+    }
+
+    .buzon6-gallery-slide img {
+        aspect-ratio: 4 / 4.5;
     }
 
     .buzon6-lightbox {
@@ -1132,11 +1327,17 @@ textarea {
 
 @media (max-width: 520px) {
     .buzon6-logo-text {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
-    .buzon6-header-link {
-        font-size: 11px;
+    .buzon6-header-inner {
+        min-height: 68px;
+    }
+
+    .buzon6-mobile-toggle {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
     }
 
     .buzon6-product-media,
@@ -1151,5 +1352,13 @@ textarea {
     .buzon6-gallery-arrow {
         width: 46px;
         height: 46px;
+    }
+
+    .buzon6-hero-image-wrap {
+        min-height: 220px;
+    }
+
+    .buzon6-hero-image {
+        max-height: 290px;
     }
 }
