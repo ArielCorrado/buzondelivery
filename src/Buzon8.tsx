@@ -3,9 +3,14 @@ import "./buzon8.css";
 
 const baseImages = [
     "/images/Buzon1SF.png",
-    "https://i.imgur.com/yZXKrwR.jpeg",
-    "https://i.imgur.com/MTjVItA.jpeg",
-    "https://i.imgur.com/Y1iblvc.png",
+    "/images/PasandoDelivery.png",
+    "/images/PasandoCarta2.png",
+    "/images/Detalle1.jpg",
+    "/images/Detalle2.jpg",
+    "/images/Detalle3.jpg",
+    "/images/Detalle4.jpg",
+    "/images/PasandoCarta.png",
+    "/images/Combo.jpg",
 ];
 
 const specs = [
@@ -471,7 +476,9 @@ export default function Buzon8() {
                     <div className="buzon6-container buzon6-product-inner">
                         <div className="buzon6-product-media">
                             <p className="buzon6-pill">Featured Product</p>
-                            <img src={baseImages[3]} alt="Producto destacado" />
+                            <img src={baseImages[4]} alt="Producto destacado" />
+                            <img src={baseImages[6]} alt="Producto destacado" />
+
                         </div>
 
                         <div className="buzon6-product-copy">
